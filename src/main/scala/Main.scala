@@ -18,7 +18,7 @@ object WindowConfig {
 }
 
 object GridConfig {
-  private val _cellSize = 20
+  private val _cellSize = 10
 
   def getCellSize: Int = _cellSize
 }
@@ -97,13 +97,13 @@ object Window extends JFXApp3 {
     stage = new JFXApp3.PrimaryStage {
       title = WindowConfig.getScreenTitle
 
-      val gridSize = 100
+      val gridSize = 1000
       val gridPane: Pane = Grid.createGrid(GridConfig.getCellSize, gridSize, gridSize)
 
       val pointA = Point(0,0)
-      val pointB = Point(10,0)
-      val pointC = Point(10,10)
-      val pointD = Point(0,10)
+      val pointB = Point(25,0)
+      val pointC = Point(25,25)
+      val pointD = Point(0,25)
 
       DrawLine.draw(GridConfig.getCellSize, gridPane, '@', pointA, pointB)
       DrawLine.draw(GridConfig.getCellSize, gridPane, '@', pointB, pointC)
