@@ -1,3 +1,4 @@
+import DrawLine.CubeDrawer
 import scalafx.application.JFXApp3
 import scalafx.scene.Scene
 import scalafx.scene.paint.Color
@@ -88,6 +89,35 @@ object DrawLine {
 
     CharacterDraw.draw(cellSize, pane, character, pointB.x, pointB.y)
   }
+
+  object CubeDrawer {
+    val vertices: Array[Point] = Array(
+      new Point(10,10),
+      new Point(20,10),
+      new Point(10,20),
+      new Point(20,20),
+      new Point(15,5),
+      new Point(25,5),
+      new Point(15,15),
+      new Point(25,15),
+    )
+
+    val edges = Array(
+      (0, 1), (0, 2), (0, 4),
+      (1, 3), (1, 5),
+      (2, 3), (2, 6),
+      (3, 7),
+      (4, 5), (4, 6),
+      (5, 7),
+      (6, 7)
+    )
+
+    def draw(cellSize: Int, pane: Pane): Unit = {
+      for ((start, end) <- edges) {
+        DrawLine.draw(cellSize, pane, '@', vertices(start), vertices(end))
+      }
+    }
+  }
 }
 
 object Window extends JFXApp3 {
@@ -100,15 +130,7 @@ object Window extends JFXApp3 {
       val gridSize = 1000
       val gridPane: Pane = Grid.createGrid(GridConfig.getCellSize, gridSize, gridSize)
 
-      val pointA = Point(0,0)
-      val pointB = Point(25,0)
-      val pointC = Point(25,25)
-      val pointD = Point(0,25)
-
-      DrawLine.draw(GridConfig.getCellSize, gridPane, '@', pointA, pointB)
-      DrawLine.draw(GridConfig.getCellSize, gridPane, '@', pointB, pointC)
-      DrawLine.draw(GridConfig.getCellSize, gridPane, '@', pointC, pointD)
-      DrawLine.draw(GridConfig.getCellSize, gridPane, '@', pointD, pointA)
+      CubeDrawer.draw(GridConfig.getCellSize, gridPane)
 
 
       //GridDrawPattern.draw(GridConfig.getCellSize, gridPane, gridSize, gridSize)
