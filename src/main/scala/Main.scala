@@ -1,4 +1,3 @@
-import DrawLine.CubeDrawer
 import scalafx.application.JFXApp3
 import scalafx.scene.Scene
 import scalafx.scene.paint.Color
@@ -20,8 +19,11 @@ object WindowConfig {
 
 object GridConfig {
   private val _cellSize = 10
+  private val _gridSize = 100
 
   def getCellSize: Int = _cellSize
+  def getGridSize: Int = _gridSize
+  def getGridMiddle: Int = _gridSize / 2
 }
 
 object Grid {
@@ -49,15 +51,6 @@ object CharacterDraw {
   }
 }
 
-object GridDrawPattern {
-  def draw(cellSize: Int, pane: Pane, rows: Int, cols: Int): Unit = {
-    for (row <- 0 until rows; col <- 0 until cols) {
-      val char = if ((row + col) % 2 == 0) '@' else '*'
-      CharacterDraw.draw(cellSize, pane, char, row, col)
-    }
-  }
-}
-
 class Point(val x: Int, val y: Int)
 
 object DrawLine {
@@ -75,7 +68,7 @@ object DrawLine {
     var currentX = pointA.x
     var currentY = pointA.y
 
-    while currentX != pointB.x || currentY != pointB.y  do
+    while currentX != pointB.x || currentY != pointB.y do
       CharacterDraw.draw(cellSize, pane, character, currentX, currentY)
       val errorMultiplyTwo = error * 2
       if errorMultiplyTwo > -absDeltaY then
@@ -89,36 +82,83 @@ object DrawLine {
 
     CharacterDraw.draw(cellSize, pane, character, pointB.x, pointB.y)
   }
+}
 
-  object CubeDrawer {
-    val vertices: Array[Point] = Array(
-      new Point(10,10),
-      new Point(20,10),
-      new Point(10,20),
-      new Point(20,20),
-      new Point(15,5),
-      new Point(25,5),
-      new Point(15,15),
-      new Point(25,15),
+object CubeDrawer {
+  val cubeSize = GridConfig.getGridMiddle / 2
+
+  val vertices: Array[(Double, Double, Double)] = Array(
+    (-1, -1, -1), (1, -1, -1), (-1, 1, -1), (1, 1, -1), //Front
+    (-1, -1, 1), (1, -1, 1), (-1, 1, 1), (1, 1, 1) // Back
+  ).map { case (x, y, z) =>
+    (
+      (x * cubeSize) + GridConfig.getGridMiddle,
+      (y * cubeSize) + GridConfig.getGridMiddle,
+      (z * cubeSize) + GridConfig.getGridMiddle)
+  }
+
+  val edges = Array(
+    (0, 1), (0, 2), (0, 4),
+    (1, 3), (1, 5),
+    (2, 3), (2, 6),
+    (3, 7),
+    (4, 5), (4, 6),
+    (5, 7),
+    (6, 7)
+  )
+
+  def applyProjection(vertex: (Double, Double, Double)): (Double, Double) = {
+    ProjectionMatrix.multiplyVectorByMatrix(vertex)
+  }
+
+  def draw(cellSize: Int, pane: Pane): Unit = {
+    val projectedVertices = vertices.map(v => applyProjection(v))
+
+    val (centerX, centerY) = (
+      projectedVertices.map(_._1).sum / projectedVertices.length,
+      projectedVertices.map(_._2).sum / projectedVertices.length
     )
 
-    val edges = Array(
-      (0, 1), (0, 2), (0, 4),
-      (1, 3), (1, 5),
-      (2, 3), (2, 6),
-      (3, 7),
-      (4, 5), (4, 6),
-      (5, 7),
-      (6, 7)
-    )
+    val adjustVertices = projectedVertices.map { case (x,y) =>
+      (x - centerX + GridConfig.getGridMiddle, y - centerY + GridConfig.getGridMiddle)
+    }
 
-    def draw(cellSize: Int, pane: Pane): Unit = {
-      for ((start, end) <- edges) {
-        DrawLine.draw(cellSize, pane, '@', vertices(start), vertices(end))
-      }
+
+    for ((start, end) <- edges) {
+      val (x1, y1) = adjustVertices(start)
+      val (x2, y2) = adjustVertices(end)
+
+      DrawLine.draw(cellSize, pane, '@', new Point(x1.toInt, y1.toInt), new Point(x2.toInt,y2.toInt))
     }
   }
 }
+
+object ProjectionMatrix {
+  val near = 0.1
+  val far = 1000
+  val fov = math.Pi / 4
+  val aspect = 1.0
+  val matrix: Array[Array[Double]] = Array(
+    Array(1.0 / (aspect * math.tan(fov / 2)), 0, 0, 0),
+    Array(0, 1.0 / math.tan(fov / 2), 0, 0),
+    Array(0, 0, -(far + near) / (far - near), -1),
+    Array(0, 0, -2 * far * near / (far - near), 0)
+  )
+
+  def multiplyVectorByMatrix(vector: (Double, Double, Double)) : (Double, Double) = {
+    val (x,y,z) = vector
+    val w = 1.0
+    val resultX = (matrix(0)(0) * x) + (matrix(0)(1) * y) + (matrix(0)(2) * z) + (matrix(0)(3) * w)
+    val resultY = (matrix(1)(0) * x) + (matrix(1)(1) * y) + (matrix(1)(2) * z) + (matrix(1)(3) * w)
+    val resultW = (matrix(3)(0) * x) + (matrix(3)(1) * y) + (matrix(3)(2) * z) + (matrix(3)(3) * w)
+
+    val projectedX = resultX / resultW
+    val projectedY = resultY / resultW
+
+    (projectedX, projectedY)
+  }
+}
+
 
 object Window extends JFXApp3 {
 
@@ -127,15 +167,11 @@ object Window extends JFXApp3 {
     stage = new JFXApp3.PrimaryStage {
       title = WindowConfig.getScreenTitle
 
-      val gridSize = 1000
-      val gridPane: Pane = Grid.createGrid(GridConfig.getCellSize, gridSize, gridSize)
+      val gridPane: Pane = Grid.createGrid(GridConfig.getCellSize, GridConfig.getGridSize, GridConfig.getGridSize)
 
       CubeDrawer.draw(GridConfig.getCellSize, gridPane)
 
-
-      //GridDrawPattern.draw(GridConfig.getCellSize, gridPane, gridSize, gridSize)
-      //CharacterDraw.draw(GridConfig.getCellSize, gridPane, '@', 0, 0)
-      //CharacterDraw.draw(GridConfig.getCellSize, gridPane, '*', pointA.getX, pointA.getY)
+      CharacterDraw.draw(GridConfig.getCellSize, gridPane, '*', GridConfig.getGridMiddle, GridConfig.getGridMiddle)
 
       scene = new Scene(WindowConfig.getScreenWidth, WindowConfig.getScreenHeight) {
         fill = WindowConfig.getScreenColor
