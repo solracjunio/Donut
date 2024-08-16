@@ -5,12 +5,12 @@ import scalafx.scene.layout.Pane
 import scalafx.scene.text.Text
 import scalafx.scene.shape.Line
 import scalafx.animation.AnimationTimer
-import scala.math.{cos, sin, Pi}
+import scala.math.{cos, sin}
 
 object WindowConfig {
-  private val _screenTitle = "Cube#D"
-  private val _screenWidth = 1920
-  private val _screenHeight = 1080
+  private val _screenTitle = "Cube3D"
+  private val _screenWidth = 1000
+  private val _screenHeight = 1000
   private val _screenColor: Color = Color.Black
 
   //val getScreenTitle: () => String = () => _screenTitle
@@ -27,11 +27,6 @@ object GridConfig {
   def getCellSize: Int = _cellSize
   def getGridSize: Int = _gridSize
   def getGridMiddle: Int = _gridSize / 2
-}
-
-def CreateGrid(cellSize: Int, rows: Int, cols: Int): Pane = new Pane {
-  prefWidth = cellSize * cols
-  prefHeight = cellSize * rows
 }
 
 def CreateText(cellSize: Int, fontSize: Int, character: Char, row: Int, col: Int): Text = new Text {
@@ -52,8 +47,8 @@ class Point2D(val x: Int, val y: Int)
 
 object DrawLine {
   def draw(cellSize: Int, pane: Pane, character: Char, pointA: Point2D, pointB: Point2D): Unit = {
-    var deltaX = pointB.x - pointA.x
-    var deltaY = pointB.y - pointA.y
+    val deltaX = pointB.x - pointA.x
+    val deltaY = pointB.y - pointA.y
     var stepX = if deltaX < 0 then -1 else 1
     var stepY = if deltaY < 0 then -1 else 1
 
@@ -82,9 +77,9 @@ object DrawLine {
 }
 
 object CubeDrawer {
-  val cubeSize = GridConfig.getGridMiddle / 2
+  private val cubeSize = GridConfig.getGridMiddle / 2
 
-  val vertices: Array[(Double, Double, Double)] = Array(
+  private val vertices: Array[(Double, Double, Double)] = Array(
     (-1, -1, -1), (1, -1, -1), (-1, 1, -1), (1, 1, -1), //Front
     (-1, -1, 1), (1, -1, 1), (-1, 1, 1), (1, 1, 1) // Back
   ).map { case (x, y, z) =>
@@ -95,7 +90,7 @@ object CubeDrawer {
     )
   }
 
-  val edges = Array(
+  private val edges = Array(
     (0, 1), (0, 2), (0, 4),
     (1, 3), (1, 5),
     (2, 3), (2, 6),
@@ -129,21 +124,6 @@ object CubeDrawer {
       pane.children.add(line)
     }
   }
-}
-
-def MatrixMultiply(a: Array[Array[Double]], b: Array[Array[Double]]): Array[Array[Double]] = {
-  val aRows = a.length
-  val aCols = a(0).length
-  val bCols = b(0).length
-  val result = Array.ofDim[Double](aRows, bCols)
-
-  for (i <- 0 until aRows) {
-    for (j <- 0 until bCols) {
-      result(i)(j) = (0 until aCols).map(k => a(i)(k) * b(k)(j)).sum
-    }
-  }
-
-  result
 }
 
 object RotationMatrices {
@@ -184,7 +164,7 @@ object RotationMatrices {
 object ProjectionMatrix {
   def project(point: (Double, Double, Double), width: Int, height: Int): (Double, Double) = {
     val (x, y, z) = point
-    val scale = 500 / (z + 500)
+    val scale = 100 / (z + 100)
     (
       x * scale + width / 2,
       y * scale + height / 2
@@ -193,8 +173,8 @@ object ProjectionMatrix {
 }
 
 object Window extends JFXApp3 {
-  var rotationAngles = (0.0, 0.0, 0.0)
-  val rotationSpeed = 0.005
+  private var rotationAngles = (0.0, 0.0, 0.0)
+  private val rotationSpeed = 0.005
 
   override def start(): Unit = {
     stage = new JFXApp3.PrimaryStage {
@@ -204,9 +184,8 @@ object Window extends JFXApp3 {
         prefWidth = WindowConfig.getScreenWidth
         prefHeight = WindowConfig.getScreenHeight
       }
-      //CreateGrid(GridConfig.getCellSize, GridConfig.getGridSize, GridConfig.getGridSize)
 
-      val timer = AnimationTimer { _ =>
+      val timer: AnimationTimer = AnimationTimer { _ =>
         gridPane.children.clear()
 
         rotationAngles = (
@@ -217,7 +196,7 @@ object Window extends JFXApp3 {
 
         CubeDrawer.draw(GridConfig.getCellSize, gridPane, rotationAngles)
 
-        DrawCharacter(GridConfig.getCellSize, gridPane, '*', GridConfig.getGridMiddle, GridConfig.getGridMiddle)
+        //DrawCharacter(GridConfig.getCellSize, gridPane, '*', GridConfig.getGridMiddle, GridConfig.getGridMiddle)
       }
 
       timer.start()
@@ -229,4 +208,3 @@ object Window extends JFXApp3 {
     }
   }
 }
-
