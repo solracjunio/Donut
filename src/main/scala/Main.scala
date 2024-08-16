@@ -3,11 +3,12 @@ import scalafx.scene.Scene
 import scalafx.scene.paint.Color
 import scalafx.scene.layout.Pane
 import scalafx.scene.text.Text
+import scalafx.animation.AnimationTimer
 
 object WindowConfig {
   private val _screenTitle = "Demo"
-  private val _screenWidth = 800
-  private val _screenHeight = 600
+  private val _screenWidth = 1920
+  private val _screenHeight = 1080
   private val _screenColor: Color = Color.Black
 
   //val getScreenTitle: () => String = () => _screenTitle
@@ -18,8 +19,8 @@ object WindowConfig {
 }
 
 object GridConfig {
-  private val _cellSize = 10
-  private val _gridSize = 100
+  private val _cellSize = 20
+  private val _gridSize = 50
 
   def getCellSize: Int = _cellSize
   def getGridSize: Int = _gridSize
@@ -111,8 +112,10 @@ object CubeDrawer {
     ProjectionMatrix.multiplyVectorByMatrix(vertex)
   }
 
-  def draw(cellSize: Int, pane: Pane): Unit = {
-    val projectedVertices = vertices.map(v => applyProjection(v))
+  def draw(cellSize: Int, pane: Pane, rotationAngles: (Double, Double, Double)): Unit = {
+    val rotatedVertices = RotationMatrices.applyRotation(vertices, rotationAngles)
+    val projectedVertices = rotatedVertices.map(v => applyProjection(v))
+    //val projectedVertices = vertices.map(v => applyProjection(v))
 
     val (centerX, centerY) = (
       projectedVertices.map(_._1).sum / projectedVertices.length,
@@ -123,7 +126,6 @@ object CubeDrawer {
       (x - centerX + GridConfig.getGridMiddle, y - centerY + GridConfig.getGridMiddle)
     }
 
-
     for ((start, end) <- edges) {
       val (x1, y1) = adjustVertices(start)
       val (x2, y2) = adjustVertices(end)
@@ -133,45 +135,111 @@ object CubeDrawer {
   }
 }
 
-object ProjectionMatrix {
-  val near = 0.1
-  val far = 1000
-  val fov = math.Pi / 4
-  val aspect = 1.0
-  val matrix: Array[Array[Double]] = Array(
-    Array(1.0 / (aspect * math.tan(fov / 2)), 0, 0, 0),
-    Array(0, 1.0 / math.tan(fov / 2), 0, 0),
-    Array(0, 0, -(far + near) / (far - near), -1),
-    Array(0, 0, -2 * far * near / (far - near), 0)
-  )
+object RotationMatrices {
+  def rotationMatrixX(angle: Double): Array[Array[Double]] = {
+    val cosA = math.cos(angle)
+    val sinA = math.sin(angle)
+    Array(
+      Array(1.0, 0.0, 0.0),
+      Array(0.0, cosA, -sinA),
+      Array(0.0, sinA, cosA)
+    )
+  }
 
-  def multiplyVectorByMatrix(vector: (Double, Double, Double)) : (Double, Double) = {
-    val (x,y,z) = vector
-    val w = 1.0
-    val resultX = (matrix(0)(0) * x) + (matrix(0)(1) * y) + (matrix(0)(2) * z) + (matrix(0)(3) * w)
-    val resultY = (matrix(1)(0) * x) + (matrix(1)(1) * y) + (matrix(1)(2) * z) + (matrix(1)(3) * w)
-    val resultW = (matrix(3)(0) * x) + (matrix(3)(1) * y) + (matrix(3)(2) * z) + (matrix(3)(3) * w)
+  def rotationMatrixY(angle: Double): Array[Array[Double]] = {
+    val cosB = math.cos(angle)
+    val sinB = math.sin(angle)
+    Array(
+      Array(cosB, 0.0, sinB),
+      Array(0.0, 1.0, 0.0),
+      Array(-sinB, 0.0, cosB)
+    )
+  }
 
-    val projectedX = resultX / resultW
-    val projectedY = resultY / resultW
+  def rotationMatrixZ(angle: Double): Array[Array[Double]] = {
+    val cosC = math.cos(angle)
+    val sinC = math.sin(angle)
+    Array(
+      Array(cosC, -sinC, 0.0),
+      Array(sinC, cosC, 0.0),
+      Array(0.0, 0.0, 1.0)
+    )
+  }
 
-    (projectedX, projectedY)
+  def multiplyMatrices(a: Array[Array[Double]], b: Array[Array[Double]]): Array[Array[Double]] = {
+    val aRows = a.length
+    val aCols = a(0).length
+    val bCols = b(0).length
+    val result = Array.ofDim[Double](aRows, bCols)
+
+    for (i <- 0 until aRows) {
+      for (j <- 0 until bCols) {
+        result(i)(j) = (0 until aCols).map(k => a(i)(k) * b(k)(j)).sum
+      }
+    }
+
+    result
+  }
+
+  def applyRotation(vertices: Array[(Double, Double, Double)], rotationAngles: (Double, Double, Double)): Array[(Double, Double, Double)] = {
+    val (alpha, beta, gamma) = rotationAngles
+    val Rx = rotationMatrixX(alpha)
+    val Ry = rotationMatrixY(beta)
+    val Rz = rotationMatrixZ(gamma)
+    val R = multiplyMatrices(Rz, multiplyMatrices(Ry, Rx))
+
+    vertices.map { case (x, y, z) =>
+      val resultX =  R(0)(0) * x + R(0)(1) * y + R(0)(2) * z
+      val resultY =  R(1)(0) * x + R(1)(1) * y + R(1)(2) * z
+      val resultZ =  R(2)(0) * x + R(2)(1) * y + R(2)(2) * z
+      (resultX, resultY, resultZ)
+    }
   }
 }
 
+object ProjectionMatrix {
+  // Nova matriz de projeção ortográfica simples
+  val matrix: Array[Array[Double]] = Array(
+    Array(1.0, 0.0, 0.0),
+    Array(0.0, 1.0, 0.0),
+    Array(0.0, 0.0, 0.0)
+  )
+
+  def multiplyVectorByMatrix(vector: (Double, Double, Double)): (Double, Double) = {
+    val (x, y, z) = vector
+    val resultX = (matrix(0)(0) * x) + (matrix(0)(1) * y) + (matrix(0)(2) * z)
+    val resultY = (matrix(1)(0) * x) + (matrix(1)(1) * y) + (matrix(1)(2) * z)
+    // Como a matriz é simples, a coordenada Z não é usada
+    (resultX, resultY)
+  }
+}
 
 object Window extends JFXApp3 {
 
-  override def start(): Unit = {
+  var rotationAngles = (0.0, 0.0, 0.0)
+  val rotationSpeed = 0.005
 
+  override def start(): Unit = {
     stage = new JFXApp3.PrimaryStage {
       title = WindowConfig.getScreenTitle
 
       val gridPane: Pane = Grid.createGrid(GridConfig.getCellSize, GridConfig.getGridSize, GridConfig.getGridSize)
 
-      CubeDrawer.draw(GridConfig.getCellSize, gridPane)
+      val timer = AnimationTimer { _ =>
+        gridPane.children.clear()
 
-      CharacterDraw.draw(GridConfig.getCellSize, gridPane, '*', GridConfig.getGridMiddle, GridConfig.getGridMiddle)
+        rotationAngles = (
+          rotationAngles._1 + rotationSpeed,
+          rotationAngles._2 + rotationSpeed,
+          rotationAngles._3 + rotationSpeed
+        )
+
+        CubeDrawer.draw(GridConfig.getCellSize, gridPane, rotationAngles)
+
+        CharacterDraw.draw(GridConfig.getCellSize, gridPane, '*', GridConfig.getGridMiddle, GridConfig.getGridMiddle)
+      }
+
+      timer.start()
 
       scene = new Scene(WindowConfig.getScreenWidth, WindowConfig.getScreenHeight) {
         fill = WindowConfig.getScreenColor
