@@ -13,7 +13,6 @@ object WindowConfig {
   private val _screenHeight = 1000
   private val _screenColor: Color = Color.Black
 
-  //val getScreenTitle: () => String = () => _screenTitle
   def getScreenTitle: String = _screenTitle
   def getScreenWidth: Int = _screenWidth
   def getScreenHeight: Int = _screenHeight
@@ -29,24 +28,22 @@ object GridConfig {
   def getGridMiddle: Int = _gridSize / 2
 }
 
-def CreateText(cellSize: Int, fontSize: Int, character: Char, row: Int, col: Int): Text = new Text {
-  x = row * cellSize + cellSize / 4
-  y = col * cellSize + cellSize / 1.5
-  this.text = character.toString
-  fill = Color.White
-  style = s"-fx-font-size: $fontSize px;"
-}
+object TextUtils {
+  def createText(cellSize: Int, fontSize: Int, character: Char, row: Int, col: Int): Text = new Text {
+    x = row * cellSize + cellSize / 4
+    y = col * cellSize + cellSize / 1.5
+    this.text = character.toString
+    fill = Color.White
+    style = s"-fx-font-size: $fontSize px;"
+  }
 
-def DrawCharacter(cellSize: Int, pane: Pane, character: Char, row: Int, col: Int): Unit = {
-  val fontSize = cellSize
-  val text = CreateText(cellSize, fontSize, character, row, col)
-  pane.children.add(text)
-}
+  def drawCharacter(cellSize: Int, pane: Pane, character: Char, row: Int, col: Int): Unit = {
+    val fontSize = cellSize
+    val text = createText(cellSize, fontSize, character, row, col)
+    pane.children.add(text)
+  }
 
-class Point2D(val x: Int, val y: Int)
-
-object DrawLine {
-  def draw(cellSize: Int, pane: Pane, character: Char, pointA: Point2D, pointB: Point2D): Unit = {
+  def drawLine(cellSize: Int, pane: Pane, character: Char, pointA: Point2D, pointB: Point2D): Unit = {
     val deltaX = pointB.x - pointA.x
     val deltaY = pointB.y - pointA.y
     var stepX = if deltaX < 0 then -1 else 1
@@ -61,7 +58,7 @@ object DrawLine {
     var currentY = pointA.y
 
     while currentX != pointB.x || currentY != pointB.y do
-      DrawCharacter(cellSize, pane, character, currentX, currentY)
+      TextUtils.drawCharacter(cellSize, pane, character, currentX, currentY)
       val errorMultiplyTwo = error * 2
       if errorMultiplyTwo > -absDeltaY then
         error -= absDeltaY
@@ -72,9 +69,11 @@ object DrawLine {
         currentY += stepY
       end if
 
-    DrawCharacter(cellSize, pane, character, pointB.x, pointB.y)
+    TextUtils.drawCharacter(cellSize, pane, character, pointB.x, pointB.y)
   }
 }
+
+class Point2D(val x: Int, val y: Int)
 
 object CubeDrawer {
   private val cubeSize = GridConfig.getGridMiddle / 2
@@ -113,7 +112,7 @@ object CubeDrawer {
     edges.foreach { case (start, end) =>
       val (x1, y1) = projectedVertices(start)
       val (x2, y2) = projectedVertices(end)
-      DrawLine.draw(cellSize, pane, '@', new Point2D(x1.toInt, y1.toInt), new Point2D(x2.toInt, y2.toInt))
+      TextUtils.drawLine(cellSize, pane, '@', new Point2D(x1.toInt, y1.toInt), new Point2D(x2.toInt, y2.toInt))
       val line = new Line {
         startX = x1
         startY = y1
@@ -195,8 +194,6 @@ object Window extends JFXApp3 {
         )
 
         CubeDrawer.draw(GridConfig.getCellSize, gridPane, rotationAngles)
-
-        //DrawCharacter(GridConfig.getCellSize, gridPane, '*', GridConfig.getGridMiddle, GridConfig.getGridMiddle)
       }
 
       timer.start()
